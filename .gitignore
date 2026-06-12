@@ -1,0 +1,24 @@
+# 환경변수 / API 키
+.env
+.env.*
+*.env
+
+# n8n 자격증명 및 세션 파일
+n8n-credentials.json
+*.credentials.json
+n8n-session*
+.n8n/
+
+# 개인정보 / 민감 데이터
+secrets/
+credentials/
+
+# macOS 시스템 파일
+.DS_Store
+
+# 에디터 설정
+.vscode/
+.idea/
+
+# 로그 파일
+*.log
