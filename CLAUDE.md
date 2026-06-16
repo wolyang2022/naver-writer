@@ -64,6 +64,27 @@ n8n HTTP Request 노드에 Claude API 연동 시 사용:
   }
   ```
 
+## GitHub 초기 연동 절차 (새 프로젝트 폴더 생길 때 참고)
+1. `git init` — 폴더를 git 저장소로 초기화
+2. `.gitignore` 작성 — API 키, .env, n8n 자격증명 등 제외
+3. `git add [파일]` → `git commit -m "메시지"` — 첫 스냅샷
+4. github.com에서 새 저장소 생성 (private, README/gitignore 체크 해제)
+5. `git remote add origin https://github.com/wolyang2022/[저장소명].git`
+6. `git branch -M main`
+7. 아래 인증 방법으로 push
+
+## GitHub 인증 방법 (HTTPS + PAT)
+Claude Code 환경에서는 터미널 인터랙션이 안 돼서 아이디/비밀번호 입력창이 뜨지 않음.
+토큰을 remote URL에 직접 포함하는 방식 사용:
+
+```bash
+git remote set-url origin https://wolyang2022:[토큰]@github.com/wolyang2022/[저장소명].git
+git push -u origin main
+```
+
+- 토큰(PAT)은 애플 암호앱에 저장 (ghp_... 로 시작)
+- .git/config 안에만 저장되며 GitHub에는 올라가지 않아 안전
+
 ## 워크플로우 GitHub 저장 절차
 워크플로우 JSON에 API 키가 포함되므로 반드시 아래 순서 준수:
 1. `n8n export:workflow --all --output=workflow.json`
