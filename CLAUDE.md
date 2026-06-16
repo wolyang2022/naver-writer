@@ -33,24 +33,46 @@
 1. [완료] 1차시 — API / Webhook / n8n 핵심 개념 (SOAR 비유로 매핑)
 2. [완료] 2차시 — n8n 화면 구조: 캔버스/노드(Input-Parameters-Output)/Connection/
    Executions/Credentials, Trigger vs Action 구분
-3. [진행 중] 3차시 — Manual Trigger + Edit Fields(Set) 노드로 첫 테스트 워크플로우
-   - Step 1~4 완료 (워크플로우 생성, Manual Trigger 확인, Edit Fields 추가,
-     fileName/location 필드 입력)
-   - 남은 작업: 실행 → Executions 탭에서 JSON 출력 확인 (Claude.ai 채팅으로 복귀해
-     이어서 진행 예정)
-4. [대기] 4차시 — Google Drive Trigger로 교체
-5. [대기] 5차시 — Claude API 2단계 호출 노드 구성
-6. [대기] 6차시 — Notion API 연동, 전체 조립 + 에러 핸들링
+3. [완료] 3차시 — Manual Trigger + Edit Fields 워크플로우 실행 + Executions JSON 확인
+4. [완료] 4차시 — Google Drive Trigger로 교체 (Blog 폴더 File Created 감시, 실제 테스트 완료)
+5. [완료] 5차시 — Claude API HTTP Request 노드 구성 + 블로그 초안 생성 텍스트 호출 성공
+   - 남은 작업: Claude Vision 노드 추가 (사진 실제 분석) → 6차시에서 진행
+6. [대기] 6차시 — Claude Vision 추가 + Notion API 연동, 전체 조립 + 에러 핸들링
 
-## 지금 당장 할 작업 (Claude Code, 신규)
-로컬 폴더 생성 + 이 CLAUDE.md 저장까지는 완료됨. 이제 GitHub 연동을 처음부터 진행:
-1. git이란 무엇인지 / GitHub과의 관계 1~2줄 설명
-2. `git init` — 이 폴더를 git 저장소로 초기화 (명령어 설명 후 실행)
-3. `.gitignore` 작성 — n8n 자격증명, .env, API 키 등 절대 올리면 안 되는 파일 제외 패턴 포함
-4. 첫 commit (CLAUDE.md, .gitignore)
-5. GitHub에 새 저장소 생성 (private 권장) — 웹 UI로 만들지, gh CLI로 만들지 사용자에게 확인
-6. 인증 방식 확인 (HTTPS+Personal Access Token vs SSH key) — 처음이라면 어떤 방식이
-   더 쉬운지 설명 후 선택
-7. remote 연결 + 첫 push
-8. 완료 후, 다음에 다시 Claude.ai 채팅으로 돌아가 "3차시 남은 작업(Executions 확인)"
-   부터 이어가면 된다고 안내
+## 환경 정보 (재시작 시 참고)
+- n8n 시작 명령어: `source ~/.nvm/nvm.sh && nvm use 20 && n8n start`
+- n8n 접속 주소: http://localhost:5678
+- GitHub 저장소: https://github.com/wolyang2022/naver-writer (private)
+- Google Drive 감시 폴더: Blog
+- Anthropic API 키: 애플 암호앱에 저장 (sk-ant-api03-...)
+
+## Claude API HTTP Request 설정 템플릿
+n8n HTTP Request 노드에 Claude API 연동 시 사용:
+
+- Method: POST
+- URL: https://api.anthropic.com/v1/messages
+- Headers:
+  - x-api-key: [Anthropic API 키]
+  - content-type: application/json
+  - anthropic-version: 2023-06-01
+- Body (JSON):
+  ```json
+  {
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "[프롬프트]"}]
+  }
+  ```
+
+## 워크플로우 GitHub 저장 절차
+워크플로우 JSON에 API 키가 포함되므로 반드시 아래 순서 준수:
+1. `n8n export:workflow --all --output=workflow.json`
+2. workflow.json에서 API 키 → `YOUR_ANTHROPIC_API_KEY` 로 교체
+3. git add → commit → push
+
+## 기술 스택 결정사항
+- 트리거: Google Drive File Created (Blog 폴더) — done.txt 방식 대신 파일 업로드 직접 감지로 변경
+- 오케스트레이션: n8n 로컬 설치 (Node.js 20 + nvm)
+- AI: Claude API (claude-sonnet-4-6) — HTTP Request 노드로 직접 호출
+- 저장: Notion DB (6차시에서 연동 예정)
+- 버전관리: GitHub private 저장소 (API 키 제외 후 push)
