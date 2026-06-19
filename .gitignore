@@ -22,3 +22,6 @@ credentials/
 
 # 로그 파일
 *.log
+
+# 실제 API 키가 포함된 원본 워크플로우 (마스킹 버전만 커밋)
+workflow_latest.json

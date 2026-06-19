@@ -1,0 +1,460 @@
+[
+  {
+    "updatedAt": "2026-06-19T00:36:51.545Z",
+    "createdAt": "2026-06-12T06:11:55.736Z",
+    "id": "V3KdtVbpTwmNN6qJ",
+    "name": "My workflow",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "pollTimes": {
+            "item": [
+              {
+                "mode": "everyMinute"
+              }
+            ]
+          },
+          "triggerOn": "specificFolder",
+          "folderToWatch": {
+            "__rl": true,
+            "value": "1tCR7b0XaCebsAIXVSxicvvFLq0dXdYMI",
+            "mode": "list",
+            "cachedResultName": "Blog",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1tCR7b0XaCebsAIXVSxicvvFLq0dXdYMI"
+          },
+          "event": "fileCreated",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDriveTrigger",
+        "typeVersion": 1,
+        "position": [
+          -688,
+          16
+        ],
+        "id": "9d1bfe00-fa73-4a62-9383-14bfa990fc3b",
+        "name": "Google Drive Trigger",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "qczsaYS5IeF92kWx",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "options": {},
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.requestBody }}"
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          128,
+          336
+        ],
+        "id": "4f103116-767e-4c0f-9b29-48f7aa94715f",
+        "name": "HTTP Request"
+      },
+      {
+        "parameters": {
+          "operation": "download",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          112,
+          112
+        ],
+        "id": "0404fb0d-63dd-4014-91f4-fb613fa10a03",
+        "name": "Download file",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "qczsaYS5IeF92kWx",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "0341e9fb-aabb-44f0-acdb-34cd94e76d36",
+                "leftValue": "={{ $json.name }}",
+                "rightValue": "done.txt",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -512,
+          176
+        ],
+        "id": "c45b48b2-335b-4244-9f2a-88bae166061a",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "resource": "fileFolder",
+          "searchMethod": "query",
+          "queryString": "'1tCR7b0XaCebsAIXVSxicvvFLq0dXdYMI' in parents and mimeType = 'image/jpeg' and trashed = false",
+          "returnAll": true,
+          "filter": {},
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          -336,
+          16
+        ],
+        "id": "d0f491d5-7372-4857-9e1a-ebe7aa05f62d",
+        "name": "Search files and folders",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "qczsaYS5IeF92kWx",
+            "name": "Google Drive account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -144,
+          176
+        ],
+        "id": "dd80102a-14e1-4544-9a16-69d4fc60082c",
+        "name": "Loop Over Items"
+      },
+      {
+        "parameters": {
+          "jsCode": "const results = [];\n\n  for (const item of $input.all()) {\n    const base64 = item.binary?.data?.data;\n    const mimeType = item.binary?.data?.mimeType || 'image/jpeg';\n\n    results.push({\n      json: {\n        imageBase64: base64,\n        mimeType: mimeType\n      }\n    });\n  }\n\n  return results;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          288,
+          112
+        ],
+        "id": "916f1e80-fe02-43b5-bf6b-39b55bcc7097",
+        "name": "Code in JavaScript"
+      },
+      {
+        "parameters": {
+          "jsCode": "const visionText = $input.first().json.candidates[0].content.parts[0].text;\n\nconst prompt = `당신은 '아빠와 딸의 성장여행' 블로그를 운영하는 아빠 월양입니다.\n아래 사진 분석 결과를 바탕으로 네이버 블로그 포스팅 초안을 작성해주세요.\n\n[글쓰기 필수 규칙]\n✅ 문체: ~해요 체 완전 통일 (~입니다/됩니다 절대 금지)\n✅ 호칭: 아이→따따 / 배우자→따따엄마 / 필자→월양 또는 아빠 월양 / 독자→엄빠\n✅ 제목: 핵심 키워드 맨 앞, 60자 이내, ~해요 말투 없음\n✅ 글 구조: 결론 먼저(체크리스트) → 방문 배경 → 현장 디테일(따따 반응 포함) → 실전 루트(번호형) → 총평 + 행동 유도 → 해시태그\n✅ 문장: 60자 이내, 단락 3~4줄 이내, 단락 사이 구분선(---) 삽입\n✅ 사진 위치: 각 단락에 [📷 사진 위치 — 설명] 형식으로 표기\n✅ 체류 장치: 도입부 체크리스트, 중간 훅(\"근데 진짜 좋았던 건요\"), 실전 루트 번호형\n✅ 해시태그: 30개, 한 줄 복사 형식\n✅ 글자 수: 본문 1500~2000자 (해시태그 제외)\n\n[여행 사진 분석 결과]\n${visionText}\n\n위 내용으로 블로그 포스팅 초안을 작성해주세요.`;\n\nconst requestBody = JSON.stringify({\n  contents: [{ parts: [{ text: prompt }] }]\n});\n\nreturn [{ json: { combinedAnalysis: visionText, requestBody } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          112,
+          -16
+        ],
+        "id": "7df602f4-6471-4afd-a6ec-7d441023086d",
+        "name": "Code in JavaScript1"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=YOUR_GEMINI_API_KEY",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.requestBody }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          320,
+          -16
+        ],
+        "id": "8a2e5299-998b-44a2-98d3-a36f3a73f6f5",
+        "name": "HTTP Request1"
+      },
+      {
+        "parameters": {
+          "jsCode": "const blogText = $input.first().json.candidates[0].content.parts[0].text;\n  const title = blogText.split('\\n')[0].replace(/^#+ /, '').trim();\n\n  const bodyText = blogText.length > 1900\n    ? blogText.slice(0, 1900) + '...(전체 내용은 페이지 안에 있어요)'\n    : blogText;\n\n  const maxLen = 1900;\n  const chunks = [];\n  for (let i = 0; i < blogText.length; i += maxLen) {\n    chunks.push(blogText.slice(i, i + maxLen));\n  }\n\n  const children = chunks.map(chunk => ({\n    object: \"block\",\n    type: \"paragraph\",\n    paragraph: {\n      rich_text: [{ type: \"text\", text: { content: chunk } }]\n    }\n  }));\n\n  const requestBody = JSON.stringify({\n    parent: { database_id: \"383715aca6d08086888af28190aa4a93\" },\n    properties: {\n      \"제목\": {\n        title: [{ type: \"text\", text: { content: title } }]\n      },\n      \"본문\": {\n        rich_text: [{ type: \"text\", text: { content: bodyText } }]\n      },\n      \"발행여부\": {\n        select: { name: \"미발행\" }\n      }\n    },\n    children: children\n  });\n\n  return [{ json: { requestBody } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          528,
+          -16
+        ],
+        "id": "4ed1c12e-3021-48d3-98b1-3018c728027f",
+        "name": "Code in JavaScript2"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.notion.com/v1/pages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer YOUR_NOTION_TOKEN"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Notion-Version",
+                "value": "2022-06-28"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.requestBody }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          560,
+          464
+        ],
+        "id": "a37e3621-5fe7-4a51-815d-a0f80026c281",
+        "name": "HTTP Request2"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst parts = [];\n\nfor (const item of items) {\n  if (item.json.imageBase64) {\n    parts.push({\n      inline_data: {\n        mime_type: item.json.mimeType || 'image/jpeg',\n        data: item.json.imageBase64\n      }\n    });\n  }\n}\n\nparts.push({\n  text: '이 사진들을 분석해서 각 사진별로 장소, 활동, 계절, 분위기, 설명을 JSON 형식으로 응답해주세요.'\n});\n\nconst requestBody = JSON.stringify({\n  contents: [{ parts: parts }]\n});\n\nreturn [{ json: { requestBody } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -16,
+          -150
+        ],
+        "id": "code-build-vision-x001",
+        "name": "Code_BuildVision"
+      }
+    ],
+    "connections": {
+      "Google Drive Trigger": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Download file": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Search files and folders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Search files and folders": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [
+            {
+              "node": "Code_BuildVision",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Download file",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript1": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request1": {
+        "main": [
+          [
+            {
+              "node": "Code in JavaScript2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code in JavaScript2": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code_BuildVision": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate",
+      "availableInMCP": false
+    },
+    "staticData": {
+      "node:Google Drive Trigger": {
+        "lastTimeChecked": "2026-06-19T04:26:06Z"
+      }
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "pinData": {},
+    "versionId": "ac8050fb-66ba-45d9-981f-c00ff3e2626a",
+    "activeVersionId": "f8007b91-e125-4995-9b7a-2c7a8ff908ad",
+    "versionCounter": 226,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-06-12T06:11:55.740Z",
+        "createdAt": "2026-06-12T06:11:55.740Z",
+        "role": "workflow:owner",
+        "workflowId": "V3KdtVbpTwmNN6qJ",
+        "projectId": "l2z5R0CqgKER5gPp",
+        "project": {
+          "updatedAt": "2026-06-12T06:08:54.679Z",
+          "createdAt": "2026-06-12T06:07:00.851Z",
+          "id": "l2z5R0CqgKER5gPp",
+          "name": "sunjong park <wolyang2022@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "18a899ab-79d3-40e5-b90d-c9f1ef8107a2"
+        }
+      }
+    ]
+  }
+]
