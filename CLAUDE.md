@@ -29,22 +29,28 @@
 - 저장: Notion DB (제목/본문/태그/SEO설명/발행여부)
 - 버전관리: GitHub 개인 리포지토리 (자격증명/세션 파일은 .gitignore로 제외)
 
-## 진행 현황 (학습 로드맵, 총 6차시)
+## 진행 현황 (학습 로드맵, 총 6차시) — 전 과정 완료 ✅
 1. [완료] 1차시 — API / Webhook / n8n 핵심 개념 (SOAR 비유로 매핑)
 2. [완료] 2차시 — n8n 화면 구조: 캔버스/노드(Input-Parameters-Output)/Connection/
    Executions/Credentials, Trigger vs Action 구분
 3. [완료] 3차시 — Manual Trigger + Edit Fields 워크플로우 실행 + Executions JSON 확인
 4. [완료] 4차시 — Google Drive Trigger로 교체 (Blog 폴더 File Created 감시, 실제 테스트 완료)
 5. [완료] 5차시 — Claude API HTTP Request 노드 구성 + 블로그 초안 생성 텍스트 호출 성공
-   - 남은 작업: Claude Vision 노드 추가 (사진 실제 분석) → 6차시에서 진행
-6. [대기] 6차시 — Claude Vision 추가 + Notion API 연동, 전체 조립 + 에러 핸들링
+6. [완료] 6차시 — Claude Vision + Notion API 연동, 전체 파이프라인 완성 및 end-to-end 테스트 성공
+   - Claude Vision: 사진 → JSON 분석 (Loop 내부, base64 변환 후 HTTP Request)
+   - Claude Text: 분석 결과 취합 + 글쓰기 지침서 프롬프트 → 블로그 초안 생성
+   - Notion 저장: HTTP Request로 직접 API 호출 (내장 Notion 노드 대신)
+   - GitHub push 완료 (API 키 / Notion 토큰 마스킹)
 
 ## 환경 정보 (재시작 시 참고)
-- n8n 시작 명령어: `source ~/.nvm/nvm.sh && nvm use 20 && n8n start`
+- n8n 시작 명령어: `source ~/.nvm/nvm.sh && nvm use 20 && N8N_DEFAULT_BINARY_DATA_MODE=default n8n start`
+  (N8N_DEFAULT_BINARY_DATA_MODE=default 필수 — 없으면 binary 데이터가 null 반환됨)
 - n8n 접속 주소: http://localhost:5678
 - GitHub 저장소: https://github.com/wolyang2022/naver-writer (private)
-- Google Drive 감시 폴더: Blog
+- Google Drive 감시 폴더: Blog (폴더 ID: 1tCR7b0XaCebsAIXVSxicvvFLq0dXdYMI)
 - Anthropic API 키: 애플 암호앱에 저장 (sk-ant-api03-...)
+- Notion Integration 토큰: 애플 암호앱에 저장 (ntn_...으로 시작)
+- Notion blog-write DB ID: 383715aca6d08086888af28190aa4a93
 
 ## Claude API HTTP Request 설정 템플릿
 n8n HTTP Request 노드에 Claude API 연동 시 사용:
@@ -88,12 +94,36 @@ git push -u origin main
 ## 워크플로우 GitHub 저장 절차
 워크플로우 JSON에 API 키가 포함되므로 반드시 아래 순서 준수:
 1. `n8n export:workflow --all --output=workflow.json`
-2. workflow.json에서 API 키 → `YOUR_ANTHROPIC_API_KEY` 로 교체
+2. workflow.json에서 아래 항목 마스킹:
+   - Anthropic API 키 → `YOUR_ANTHROPIC_API_KEY`
+   - Notion 토큰 → `YOUR_NOTION_TOKEN`
 3. git add → commit → push
 
-## 기술 스택 결정사항
-- 트리거: Google Drive File Created (Blog 폴더) — done.txt 방식 대신 파일 업로드 직접 감지로 변경
+## 기술 스택 결정사항 (최종)
+- 트리거: Google Drive File Created (Blog 폴더) — JPEG 업로드 시 자동 감지
+  (done.txt 방식 → 직접 파일 감지 방식으로 변경. done.txt는 IF 조건에서 필터링됨)
 - 오케스트레이션: n8n 로컬 설치 (Node.js 20 + nvm)
 - AI: Claude API (claude-sonnet-4-6) — HTTP Request 노드로 직접 호출
-- 저장: Notion DB (6차시에서 연동 예정)
-- 버전관리: GitHub private 저장소 (API 키 제외 후 push)
+  - Vision: 사진 base64 → 장면/장소/활동/계절 JSON 추출
+  - Text: Vision 결과 + 글쓰기 지침서 프롬프트 → 블로그 초안 (max_tokens: 4096)
+- 저장: Notion blog-write DB — HTTP Request로 직접 API 호출
+  (n8n 내장 Notion 노드는 rich_text 포맷 오류로 사용하지 않음)
+- 버전관리: GitHub private 저장소 (API 키 / Notion 토큰 마스킹 후 push)
+
+## 완성된 워크플로우 구조
+Google Drive Trigger
+→ IF (name == "done.txt" → true: 파이프라인 실행 / false: 무시)
+→ Search files and folders (Blog 폴더 JPEG 검색, trashed=false)
+→ Loop Over Items
+  - loop: Download file → Code in JavaScript (base64 변환) → HTTP Request (Vision)
+  - done: Code in JavaScript1 (분석 취합 + requestBody 빌드) → HTTP Request1 (Claude Text)
+→ Code in JavaScript2 (Notion requestBody 빌드)
+→ HTTP Request2 (Notion API POST /v1/pages)
+
+## 주요 트러블슈팅 기록
+- binary data null: N8N_DEFAULT_BINARY_DATA_MODE=default 환경변수 필수
+- Claude Text HTTP Request JSON 오류: Code 노드에서 JSON.stringify 후 Raw body로 전송
+- Google Drive Search 52개 반환: 쿼리에 `and trashed = false` 추가
+- Notion 내장 노드 400 오류: rich_text 포맷 문제 → HTTP Request 직접 호출로 교체
+- Notion 속성명 오류: DB 컬럼명이 "이름"으로 생성됨 → "제목"으로 변경 필요
+- Notion 토큰 대괄호 오류: `Bearer [토큰]`에서 대괄호 제거 후 `Bearer 토큰값`으로 입력
